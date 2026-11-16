@@ -234,7 +234,16 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                             }}
                             Text(status,style=MaterialTheme.typography.bodySmall)
                             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                                items(rows.filter{it.stage==stage && (!onlyLiquid || (it.pair.liquidityUsd?:0.0)>=3000.0)},key={it.mint}) { row ->
+                                items(rows.filter{ row ->
+                                    val mc=row.pair.marketCap?:row.pair.fdv?:0.0
+                                    row.stage==stage && (!onlyLiquid || (row.pair.liquidityUsd?:0.0)>=3000.0) &&
+                                    mc >= (minMc.toDoubleOrNull()?:0.0) && mc <= (maxMc.toDoubleOrNull()?:Double.MAX_VALUE) &&
+                                    (row.pair.liquidityUsd?:0.0)>=(minLp.toDoubleOrNull()?:0.0) &&
+                                    (row.pair.volume1h?:0.0)>=(minVol.toDoubleOrNull()?:0.0) &&
+                                    (row.pair.buys5m?:0)>=(minBuyCount.toIntOrNull()?:0) &&
+                                    (row.pair.sells5m?:0)<=(maxSellCount.toIntOrNull()?:Int.MAX_VALUE) &&
+                                    row.score>=(filterScore.toIntOrNull()?:0)
+                                },key={it.mint}) { row ->
                                     Card { Column(Modifier.fillMaxWidth().padding(11.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                                             Text("${row.name} (${row.symbol})",style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
