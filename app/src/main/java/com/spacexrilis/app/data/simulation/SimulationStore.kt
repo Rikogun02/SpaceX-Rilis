@@ -28,6 +28,8 @@ class SimulationStore(ctx:Context) {
     fun setMinScore(v:Int)=p.edit().putInt("min_score",v.coerceIn(0,100)).apply()
     fun scoreWeight(key:String,default:Int)=p.getInt("score_$key",default)
     fun setScoreWeight(key:String,value:Int)=p.edit().putInt("score_$key",value.coerceIn(0,100)).apply()
+    fun filterConfig(stage:String):String?=p.getString("filter_$stage",null)
+    fun setFilterConfig(stage:String,value:String)=p.edit().putString("filter_$stage",value).apply()
 
     @Synchronized fun open(m:String,s:String,price:Double,usd:Double):Boolean {
         if(price<=0||usd<=0||usd>balance()||positions().any{it.mint==m}) return false
