@@ -18,6 +18,14 @@ android {
         buildConfigField("String", "PUMPPORTAL_WS_URL", "\"wss://pumpportal.fun/api/data\"")
     }
     buildFeatures { compose = true; buildConfig = true }
+    buildTypes {
+        getByName("release") {
+            // Installable test release signed with the standard debug certificate.
+            // Use a private release keystore before Play Store distribution.
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
