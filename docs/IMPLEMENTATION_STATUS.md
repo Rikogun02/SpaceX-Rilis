@@ -18,3 +18,8 @@
 
 ## Keamanan
 Simulation only. Tidak ada seed phrase/private key, signing, swap, atau jalur live-buy.
+
+## Upstream API references
+- DexScreener: https://docs.dexscreener.com/api/reference
+- PumpPortal real-time data: https://pumpportal.fun/data-api/real-time/
+- RugCheck summary endpoint reference: https://fluxrpc.com/docs/rugcheck/getTokenReportSummary
