@@ -180,8 +180,10 @@ private fun SpaceXRilisApp(sim: SimulationStore) {
                                             val message = if (report == null) "RugCheck tidak tersedia · status belum terverifikasi"
                                             else {
                                                 val raw = report.get("score")?.takeUnless { it.isJsonNull }?.toString() ?: "tidak tersedia"
+                                                val normalized = report.get("score_normalised")?.takeUnless { it.isJsonNull }?.toString() ?: "tidak tersedia"
+                                                val lpLocked = report.get("lpLockedPct")?.takeUnless { it.isJsonNull }?.toString() ?: "tidak tersedia"
                                                 val names = report.getAsJsonArray("risks")?.take(2)?.joinToString { it.asJsonObject.get("name")?.asString ?: "Risk" } ?: "Daftar risiko tidak tersedia"
-                                                "RugCheck raw score: $raw · $names"
+                                                "RugCheck raw: $raw · normalized: $normalized · LP locked: $lpLocked% · $names"
                                             }
                                             rows = rows.map { if (it.mint == row.mint) it.copy(risk = message) else it }
                                         }
