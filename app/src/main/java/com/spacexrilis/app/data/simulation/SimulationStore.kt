@@ -14,6 +14,8 @@ class SimulationStore(ctx:Context) {
     fun history():List<SimTrade> = p.getStringSet("history",emptySet()).orEmpty().mapNotNull { v ->
         val a=v.split("|"); if(a.size!=8) null else runCatching { SimTrade(a[0],a[1],a[2],a[3].toDouble(),a[4].toDouble(),a[5].toDouble(),a[6].toDouble(),a[7].toLong()) }.getOrNull()
     }.sortedBy { it.closedAt }
+    fun scannerEnabled()=p.getBoolean("scanner_enabled",true)
+    fun setScannerEnabled(v:Boolean)=p.edit().putBoolean("scanner_enabled",v).apply()
     fun autoBuy()=p.getBoolean("auto_buy",false)
     fun setAutoBuy(v:Boolean)=p.edit().putBoolean("auto_buy",v).apply()
     fun lot()=p.getFloat("lot",10f).toDouble()
