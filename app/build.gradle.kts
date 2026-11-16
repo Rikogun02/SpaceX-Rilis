@@ -10,8 +10,8 @@ android {
         applicationId = "com.spacexrilis.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "1.0.2"
         buildConfigField("String", "DEXSCREENER_BASE_URL", "\"https://api.dexscreener.com/\"")
         buildConfigField("String", "RUGCHECK_BASE_URL", "\"https://api.rugcheck.xyz/\"")
         buildConfigField("String", "SOLANA_RPC_URL", "\"https://api.mainnet-beta.solana.com\"")
@@ -21,7 +21,7 @@ android {
     buildTypes {
         getByName("release") {
             // Installable test release signed with the standard debug certificate.
-            // Use a private release keystore before Play Store distribution.
+            // Use a persistent private release keystore for stable update signatures.
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
         }
