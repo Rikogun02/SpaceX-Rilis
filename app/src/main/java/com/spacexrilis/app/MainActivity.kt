@@ -14,6 +14,9 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.spacexrilis.app.data.remote.ApiFactory
 import com.spacexrilis.app.data.remote.ScannerRuntime
+import com.spacexrilis.app.data.remote.pumpportal.PumpPortalKeyStore
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.spacexrilis.app.data.simulation.SimulationStore
 import com.spacexrilis.app.domain.model.TokenPair
 import com.spacexrilis.app.domain.scoring.TokenScorer
@@ -49,6 +52,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SpaceXRilisApp(sim: SimulationStore) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val keyStore = remember { PumpPortalKeyStore(context) }
+    var pumpApiKey by remember { mutableStateOf(keyStore.read()) }
+    var keyDraft by remember { mutableStateOf("") }
+    var showKeyDialog by remember { mutableStateOf(false) }
     var rows by remember { mutableStateOf<List<ScannerRow>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Menunggu pemindaian") }
@@ -104,9 +112,9 @@ private fun SpaceXRilisApp(sim: SimulationStore) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(pumpApiKey) {
         launch {
-            ScannerRuntime.pumpEvents()
+            ScannerRuntime.pumpEvents(pumpApiKey)
                 .catch { stream = "Stream tidak tersedia · REST polling tetap aktif" }
                 .collect { raw ->
                     stream = "PumpPortal aktif · event diterima"
@@ -157,6 +165,9 @@ private fun SpaceXRilisApp(sim: SimulationStore) {
             ) {
                 Text("SPACEX RILIS", style = MaterialTheme.typography.headlineMedium)
                 Text("SOLANA MEMECOIN SCANNER", style = MaterialTheme.typography.labelMedium)
+                OutlinedButton(onClick = { keyDraft = pumpApiKey; showKeyDialog = true }) {
+                    Text(if (pumpApiKey.isBlank()) "Atur API Key PumpPortal" else "API PumpPortal tersimpan")
+                }
                 Card {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("AUTO BUY · SIMULATION ONLY", color = MaterialTheme.colorScheme.primary)
@@ -235,6 +246,40 @@ private fun SpaceXRilisApp(sim: SimulationStore) {
                     }) { Text("Tutup posisi") }
                 }
                 Text("Tidak ada transaksi nyata. Jangan pernah memasukkan seed phrase/private key. Skor bukan saran investasi.", style = MaterialTheme.typography.labelSmall)
+                if (showKeyDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showKeyDialog = false },
+                        title = { Text("API Key PumpPortal") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Key disimpan terenkripsi di perangkat ini. Jangan kirim key ke chat atau commit ke GitHub.")
+                                OutlinedTextField(value = keyDraft, onValueChange = { keyDraft = it },
+                                    label = { Text("Paste API key") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                                Text("Feed token baru dan migrasi digunakan. Stream trade token/account dapat memiliki biaya terpisah.", style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                keyStore.save(keyDraft)
+                                pumpApiKey = keyDraft.trim()
+                                showKeyDialog = false
+                                stream = if (pumpApiKey.isBlank()) "API key belum diatur" else "Menghubungkan ulang PumpPortal…"
+                            }) { Text("Simpan") }
+                        },
+                        dismissButton = {
+                            Row {
+                                TextButton(onClick = {
+                                    keyStore.clear()
+                                    pumpApiKey = ""
+                                    keyDraft = ""
+                                    showKeyDialog = false
+                                    stream = "API key dihapus · REST polling aktif"
+                                }) { Text("Hapus") }
+                                TextButton(onClick = { showKeyDialog = false }) { Text("Batal") }
+                            }
+                        }
+                    )
+                }
             }
         }
     }
