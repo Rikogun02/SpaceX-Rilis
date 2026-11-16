@@ -197,6 +197,28 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
         while(true){refresh();delay(ScannerRuntime.POLL_INTERVAL_MS)}
     }
 
+    fun filterPasses(row:ScannerRow):Boolean {
+        val mc=row.pair.marketCap?:row.pair.fdv?:0.0
+        return row.stage==stage && (!onlyLiquid || (row.pair.liquidityUsd?:0.0)>=3000.0) &&
+            mc >= (minMc.toDoubleOrNull()?:0.0) && mc <= (maxMc.toDoubleOrNull()?:Double.MAX_VALUE) &&
+            (row.pair.liquidityUsd?:0.0)>=(minLp.toDoubleOrNull()?:0.0) &&
+            (row.pair.volume1h?:0.0)>=(minVol.toDoubleOrNull()?:0.0) &&
+            (row.pair.buys5m?:0)>=(minBuyCount.toIntOrNull()?:0) &&
+            (row.pair.sells5m?:0)<=(maxSellCount.toIntOrNull()?:Int.MAX_VALUE) &&
+            row.score>=(filterScore.toIntOrNull()?:0)
+    }
+    val visibleRows=rows.filter(::filterPasses)
+    val rejectedRows=rows.filter{it.stage==stage && !filterPasses(it)}
+    fun saveCurrentFilter() {
+        sim.setFilterConfig(stage.name,listOf(minMc,maxMc,minLp,minVol,minBuyCount,maxSellCount,filterScore,onlyLiquid.toString()).joinToString("~"))
+    }
+    LaunchedEffect(stage) {
+        sim.filterConfig(stage.name)?.split("~")?.takeIf{it.size==8}?.let { v ->
+            minMc=v[0]; maxMc=v[1]; minLp=v[2]; minVol=v[3]
+            minBuyCount=v[4]; maxSellCount=v[5]; filterScore=v[6]; onlyLiquid=v[7].toBoolean()
+        }
+    }
+
     MaterialTheme(colorScheme=darkColorScheme()) {
         ModalNavigationDrawer(
             drawerState=drawerState,
@@ -277,19 +299,31 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                     OutlinedTextField(maxSellCount,{maxSellCount=it.filter{ch->ch.isDigit()}},label={Text("Sell max")},modifier=Modifier.weight(1f),singleLine=true)
                                     OutlinedTextField(filterScore,{filterScore=it.filter{ch->ch.isDigit()}},label={Text("Skor min")},modifier=Modifier.weight(1f),singleLine=true)
                                 }
+                                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
+                                    Button(onClick={saveCurrentFilter()}) { Text("Simpan filter ${when(stage){TokenStage.NEW->"New";TokenStage.BONDING->"Bonding";TokenStage.MIGRATED->"Migrasi"}}") }
+                                }
                             }}
                             Text(status,style=MaterialTheme.typography.bodySmall)
+                            Card { Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                                Text("KONSOL · TIDAK LULUS FILTER (${rejectedRows.size})",style=MaterialTheme.typography.titleSmall)
+                                if(rejectedRows.isEmpty()) Text("Belum ada token yang gagal filter.",style=MaterialTheme.typography.bodySmall)
+                                else rejectedRows.take(30).forEach { rejected ->
+                                    val mc=rejected.pair.marketCap?:rejected.pair.fdv?:0.0
+                                    val reasons=buildList {
+                                        if(mc<(minMc.toDoubleOrNull()?:0.0)) add("MC di bawah minimum")
+                                        if(mc>(maxMc.toDoubleOrNull()?:Double.MAX_VALUE)) add("MC di atas maksimum")
+                                        if(onlyLiquid && (rejected.pair.liquidityUsd?:0.0)<3000.0) add("LP di bawah $3k")
+                                        if((rejected.pair.liquidityUsd?:0.0)<(minLp.toDoubleOrNull()?:0.0)) add("LP kurang")
+                                        if((rejected.pair.volume1h?:0.0)<(minVol.toDoubleOrNull()?:0.0)) add("Volume 1j kurang")
+                                        if((rejected.pair.buys5m?:0)<(minBuyCount.toIntOrNull()?:0)) add("Buy kurang")
+                                        if((rejected.pair.sells5m?:0)>(maxSellCount.toIntOrNull()?:Int.MAX_VALUE)) add("Sell terlalu tinggi")
+                                        if(rejected.score<(filterScore.toIntOrNull()?:0)) add("Skor di bawah minimum")
+                                    }
+                                    Text("${rejected.symbol} · ${reasons.joinToString(", ").ifBlank{"Tidak memenuhi filter"}}",style=MaterialTheme.typography.bodySmall)
+                                }
+                            }}
                             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                                items(rows.filter{ row ->
-                                    val mc=row.pair.marketCap?:row.pair.fdv?:0.0
-                                    row.stage==stage && (!onlyLiquid || (row.pair.liquidityUsd?:0.0)>=3000.0) &&
-                                    mc >= (minMc.toDoubleOrNull()?:0.0) && mc <= (maxMc.toDoubleOrNull()?:Double.MAX_VALUE) &&
-                                    (row.pair.liquidityUsd?:0.0)>=(minLp.toDoubleOrNull()?:0.0) &&
-                                    (row.pair.volume1h?:0.0)>=(minVol.toDoubleOrNull()?:0.0) &&
-                                    (row.pair.buys5m?:0)>=(minBuyCount.toIntOrNull()?:0) &&
-                                    (row.pair.sells5m?:0)<=(maxSellCount.toIntOrNull()?:Int.MAX_VALUE) &&
-                                    row.score>=(filterScore.toIntOrNull()?:0)
-                                },key={it.mint}) { row ->
+                                items(visibleRows,key={it.mint}) { row ->
                                     Card { Column(Modifier.fillMaxWidth().padding(11.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                                             Text("${row.name} (${row.symbol})",style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
@@ -385,6 +419,21 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                     }}
                                 }
                                 item { Card { Column(Modifier.fillMaxWidth().padding(12.dp)) { Text("MANUAL SCORING · BOBOT"); Text("Likuiditas: "+wLiquidity.toInt()+"%"); Slider(value=wLiquidity,onValueChange={wLiquidity=it;sim.setScoreWeight("liquidity",it.toInt())},valueRange=0f..100f); Text("Volume: "+wVolume.toInt()+"%"); Slider(value=wVolume,onValueChange={wVolume=it;sim.setScoreWeight("volume",it.toInt())},valueRange=0f..100f); Text("Tekanan beli: "+wBuy.toInt()+"%"); Slider(value=wBuy,onValueChange={wBuy=it;sim.setScoreWeight("buy",it.toInt())},valueRange=0f..100f); Text("Momentum: "+wMomentum.toInt()+"%"); Slider(value=wMomentum,onValueChange={wMomentum=it;sim.setScoreWeight("momentum",it.toInt())},valueRange=0f..100f); Text("Keamanan: "+wSafety.toInt()+"%"); Slider(value=wSafety,onValueChange={wSafety=it;sim.setScoreWeight("safety",it.toInt())},valueRange=0f..100f) } } }
+                                item {
+                                    Button(onClick={
+                                        sim.setAutoBuy(autoBuy)
+                                        amount.toDoubleOrNull()?.let{sim.setLot(it)}
+                                        minScore.toIntOrNull()?.let{sim.setMinScore(it.coerceIn(0,100))}
+                                        stopLoss.toDoubleOrNull()?.let{sim.setStopLoss(it)}
+                                        takeProfit.toDoubleOrNull()?.let{sim.setTakeProfit(it)}
+                                        sim.setScoreWeight("liquidity",wLiquidity.toInt())
+                                        sim.setScoreWeight("volume",wVolume.toInt())
+                                        sim.setScoreWeight("buy",wBuy.toInt())
+                                        sim.setScoreWeight("momentum",wMomentum.toInt())
+                                        sim.setScoreWeight("safety",wSafety.toInt())
+                                        status="Pengaturan Advance berhasil disimpan"
+                                    },modifier=Modifier.fillMaxWidth()){Text("SIMPAN PENGATURAN ADVANCE")}
+                                }
                                 item {
                                     OutlinedButton(onClick={keyDraft=pumpApiKey;showKeyDialog=true}){Text("Atur API Key PumpPortal")}
                                 }
