@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.spacexrilis.app.data.remote.ApiFactory
 import com.spacexrilis.app.data.remote.ScannerRuntime
 import com.spacexrilis.app.data.simulation.SimulationStore
@@ -24,6 +25,14 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private data class PumpPortalToken(val mint:String,val name:String,val symbol:String,val migrated:Boolean)
+
+private fun parsePumpTokenEvent(raw:String):PumpPortalToken? = runCatching {
+    val j=JsonParser.parseString(raw).asJsonObject
+    val mint=j.get("mint")?.takeUnless { it.isJsonNull }?.asString ?: return null
+    PumpPortalToken(mint,j.get("name")?.takeUnless { it.isJsonNull }?.asString ?: "New Pump.fun token",j.get("symbol")?.takeUnless { it.isJsonNull }?.asString ?: "—",j.has("pool") || j.has("migration"))
+}.getOrNull()
 
 private data class ScannerRow(
     val mint: String, val name: String, val symbol: String, val pair: TokenPair,
@@ -45,6 +54,7 @@ private fun SpaceXRilisApp(sim: SimulationStore) {
     var status by remember { mutableStateOf("Menunggu pemindaian") }
     var updated by remember { mutableStateOf("—") }
     var stream by remember { mutableStateOf("Menghubungkan PumpPortal…") }
+    var pumpTokens by remember { mutableStateOf<Map<String, PumpPortalToken>>(emptyMap()) }
     var balance by remember { mutableDoubleStateOf(sim.balance()) }
     var positionCount by remember { mutableIntStateOf(sim.positions().size) }
     var amount by remember { mutableStateOf("10") }
@@ -83,7 +93,8 @@ private fun SpaceXRilisApp(sim: SimulationStore) {
                         "Belum diperiksa RugCheck")
                 }.sortedByDescending { it.score }
             }
-            rows = found
+            val liveOnly = rows.filter { old -> pumpTokens.containsKey(old.mint) && found.none { it.mint == old.mint } }
+            rows = (found + liveOnly).distinctBy { it.mint }
             updated = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             status = "Pemindaian selesai · ${found.size} token dengan pair pasar"
         } catch (e: Exception) {
@@ -97,7 +108,24 @@ private fun SpaceXRilisApp(sim: SimulationStore) {
         launch {
             ScannerRuntime.pumpEvents()
                 .catch { stream = "Stream tidak tersedia · REST polling tetap aktif" }
-                .collect { stream = "PumpPortal terhubung · event masuk" }
+                .collect { raw ->
+                    stream = "PumpPortal aktif · event diterima"
+                    val event = parsePumpTokenEvent(raw)
+                    if (event != null) {
+                        pumpTokens = pumpTokens + (event.mint to event)
+                        val emptyPair = TokenPair(
+                            pairAddress = "", mintAddress = event.mint, dexId = if (event.migrated) "pump-swap" else "pump.fun",
+                            priceUsd = null, liquidityUsd = null, volume5m = null, volume1h = null, volume24h = null,
+                            change5m = null, change1h = null, change24h = null, marketCap = null, fdv = null,
+                            buys5m = null, sells5m = null, pairCreatedAt = null
+                        )
+                        val scored = TokenScorer.score(emptyPair, false)
+                        val liveRow = ScannerRow(event.mint, event.name, event.symbol, emptyPair, scored.score,
+                            if (event.migrated) "MIGRATED · DATA PAIR MENUNGGU" else "PUMP.FUN BARU · DATA PAIR MENUNGGU",
+                            scored.reasons, "Belum diperiksa RugCheck")
+                        rows = (listOf(liveRow) + rows.filterNot { it.mint == event.mint }).take(120)
+                    }
+                }
         }
         while (true) {
             refresh()
