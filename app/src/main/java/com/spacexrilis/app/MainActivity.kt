@@ -216,6 +216,22 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                 Button(onClick={scope.launch{refresh()}},enabled=!loading){Text(if(loading)"Memindai…" else "Scan sekarang")}
                                 OutlinedButton(onClick={onlyLiquid=!onlyLiquid}){Text(if(onlyLiquid)"Semua LP" else "LP ≥ $3k")}
                             }
+                            Card { Column(Modifier.fillMaxWidth().padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                                Text("FILTER LENGKAP",style=MaterialTheme.typography.titleSmall)
+                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                    OutlinedTextField(minMc,{minMc=it.filter{ch->ch.isDigit()}},label={Text("MC min $")},modifier=Modifier.weight(1f),singleLine=true)
+                                    OutlinedTextField(maxMc,{maxMc=it.filter{ch->ch.isDigit()}},label={Text("MC max $")},modifier=Modifier.weight(1f),singleLine=true)
+                                }
+                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                    OutlinedTextField(minLp,{minLp=it.filter{ch->ch.isDigit()}},label={Text("LP min $")},modifier=Modifier.weight(1f),singleLine=true)
+                                    OutlinedTextField(minVol,{minVol=it.filter{ch->ch.isDigit()}},label={Text("Vol 1j min $")},modifier=Modifier.weight(1f),singleLine=true)
+                                }
+                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                    OutlinedTextField(minBuyCount,{minBuyCount=it.filter{ch->ch.isDigit()}},label={Text("Buy min")},modifier=Modifier.weight(1f),singleLine=true)
+                                    OutlinedTextField(maxSellCount,{maxSellCount=it.filter{ch->ch.isDigit()}},label={Text("Sell max")},modifier=Modifier.weight(1f),singleLine=true)
+                                    OutlinedTextField(filterScore,{filterScore=it.filter{ch->ch.isDigit()}},label={Text("Skor min")},modifier=Modifier.weight(1f),singleLine=true)
+                                }
+                            }}
                             Text(status,style=MaterialTheme.typography.bodySmall)
                             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                                 items(rows.filter{it.stage==stage && (!onlyLiquid || (it.pair.liquidityUsd?:0.0)>=3000.0)},key={it.mint}) { row ->
