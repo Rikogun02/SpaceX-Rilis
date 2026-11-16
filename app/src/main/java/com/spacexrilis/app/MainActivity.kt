@@ -1,7 +1,15 @@
 package com.spacexrilis.app
 
 import android.os.Bundle
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
+import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -74,6 +82,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
     var stage by remember { mutableStateOf(TokenStage.NEW) }
     var rows by remember { mutableStateOf<List<ScannerRow>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var scannerEnabled by remember { mutableStateOf(sim.scannerEnabled()) }
     var status by remember { mutableStateOf("Menunggu pemindaian") }
     var updated by remember { mutableStateOf("—") }
     var stream by remember { mutableStateOf("Menghubungkan PumpPortal…") }
@@ -102,6 +111,24 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
     val scoreWeights=ScoreWeights(wLiquidity.toInt(),wVolume.toInt(),wBuy.toInt(),wMomentum.toInt(),wSafety.toInt())
 
     fun syncPortfolio() { balance=sim.balance(); positions=sim.positions(); history=sim.history() }
+    fun updateScannerNotification(enabled:Boolean) {
+        val manager=context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId="spacex_scanner"
+        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O) manager.createNotificationChannel(
+            NotificationChannel(channelId,"SpaceX Rilis Scanner",NotificationManager.IMPORTANCE_LOW).apply { description="Status scanner Pump.fun" }
+        )
+        if(!enabled) { manager.cancel(7101); return }
+        if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) return
+        val notification=NotificationCompat.Builder(context,channelId)
+            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setContentTitle("SpaceX Rilis · Scanner aktif")
+            .setContentText("Memantau token Pump.fun · polling 30 detik")
+            .setOngoing(true).setOnlyAlertOnce(true).setPriority(NotificationCompat.PRIORITY_LOW).build()
+        manager.notify(7101,notification)
+    }
+    val notificationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if(granted && scannerEnabled) updateScannerNotification(true)
+    }
     fun currentPrice(mint:String)=rows.firstOrNull{it.mint==mint}?.pair?.priceUsd
     fun pnl(pos:SimPosition, price:Double?):Double? = if(price==null || pos.entryPrice<=0) null else pos.amountUsd*(price/pos.entryPrice-1.0)
 
@@ -148,7 +175,9 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
         finally { loading=false }
     }
 
-    LaunchedEffect(pumpApiKey) {
+    LaunchedEffect(pumpApiKey,scannerEnabled) {
+        if(!scannerEnabled) { stream="Scanner nonaktif"; updateScannerNotification(false); return@LaunchedEffect }
+        updateScannerNotification(true)
         launch {
             ScannerRuntime.pumpEvents(pumpApiKey).catch{stream="Stream tidak tersedia · REST polling tetap aktif"}.collect { raw ->
                 stream="PumpPortal aktif · event diterima"
@@ -200,10 +229,27 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                         }
                         TextButton(onClick={keyDraft=pumpApiKey;showKeyDialog=true}){Text("API")}
                     }
-                    Card { Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                        Text("Saldo virtual: $"+ "%.2f".format(Locale.US,balance)+"  ·  Posisi: ${positions.size}")
+                    Card { Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("SCANNER PUMP.FUN",style=MaterialTheme.typography.labelMedium)
+                                Text(if(scannerEnabled)"Scanner berjalan" else "Scanner dihentikan",style=MaterialTheme.typography.bodySmall)
+                            }
+                            Switch(checked=scannerEnabled,onCheckedChange={enabled->
+                                scannerEnabled=enabled;sim.setScannerEnabled(enabled)
+                                if(enabled && Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+                                    notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                else updateScannerNotification(enabled)
+                            })
+                        }
+                        val unrealized=positions.sumOf{pos->pnl(pos,currentPrice(pos.mint))?:0.0}
+                        val realized=history.sumOf{it.pnlUsd}
+                        val allPnl=realized+unrealized
+                        Text("PnL ALL: $"+ "%.2f".format(Locale.US,allPnl)+" · Realized $"+ "%.2f".format(Locale.US,realized)+" · Floating $"+ "%.2f".format(Locale.US,unrealized),
+                            color=if(allPnl>=0)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                        Text("Saldo virtual: $"+ "%.2f".format(Locale.US,balance)+" · Posisi: ${positions.size}")
                         Text("PumpPortal: $stream",style=MaterialTheme.typography.bodySmall)
-                        Text("Update: $updated  ·  Polling 30 detik",style=MaterialTheme.typography.bodySmall)
+                        Text("Update: $updated · Polling 30 detik",style=MaterialTheme.typography.bodySmall)
                     }}
                     when(section) {
                         AppSection.FILTER -> {
