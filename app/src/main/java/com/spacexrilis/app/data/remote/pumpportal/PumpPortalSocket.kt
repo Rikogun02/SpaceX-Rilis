@@ -5,6 +5,8 @@ import okio.ByteString
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 class PumpPortalSocket(private val apiKey: String = "") {
@@ -14,9 +16,9 @@ class PumpPortalSocket(private val apiKey: String = "") {
         .build()
 
     fun events(): Flow<String> = callbackFlow {
-        val base = "wss://pumpportal.fun/api/data".toHttpUrl()
-        val url = if (apiKey.isBlank()) base else base.newBuilder()
-            .addQueryParameter("api-key", apiKey.trim()).build()
+        val encodedKey = URLEncoder.encode(apiKey.trim(), StandardCharsets.UTF_8.name())
+        val url = if (apiKey.isBlank()) "wss://pumpportal.fun/api/data"
+            else "wss://pumpportal.fun/api/data?api-key=$encodedKey"
         val socket = client.newWebSocket(Request.Builder().url(url).build(), object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 webSocket.send("{\"method\":\"subscribeNewToken\"}")
