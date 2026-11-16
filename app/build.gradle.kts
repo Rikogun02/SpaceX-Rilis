@@ -10,8 +10,8 @@ android {
         applicationId = "com.spacexrilis.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         buildConfigField("String", "DEXSCREENER_BASE_URL", "\"https://api.dexscreener.com/\"")
         buildConfigField("String", "RUGCHECK_BASE_URL", "\"https://api.rugcheck.xyz/\"")
         buildConfigField("String", "SOLANA_RPC_URL", "\"https://api.mainnet-beta.solana.com\"")
