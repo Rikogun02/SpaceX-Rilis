@@ -48,8 +48,72 @@ private enum class AppSection(val title:String, val subtitle:String) {
     FILTER("Filter", "New, bonding curve, dan migrasi"),
     POSITIONS("Posisi", "Posisi terbuka dan PnL"),
     STATS("Statistik", "Performa trade dan riwayat"),
-    ADVANCED("Advance", "Pengaturan simulasi dan risiko")
+    ADVANCED("Advance", "Pengaturan simulasi dan risiko"),
+    CONSOLE("Konsol", "Dashboard scanner dan log token")
 }
+
+private data class FilterInput(val key:String,val label:String)
+private fun filterInputs(stage:TokenStage):List<FilterInput> = when(stage) {
+    TokenStage.NEW -> listOf(
+        FilterInput("age","Waktu pembuatan (5m / 15m / 1j / 6j / 24j)"),
+        FilterInput("bonding_status","Status bonding (belum bonding)"),
+        FilterInput("progress","Progres bonding (%)"),
+        FilterInput("liquidity_min","Likuiditas awal minimum ($)"),
+        FilterInput("volume_1h_min","Volume awal minimum ($)"),
+        FilterInput("buyers_min","Pembeli unik minimum"),
+        FilterInput("txns_min","Transaksi minimum"),
+        FilterInput("launchpad","Launchpad"),
+        FilterInput("category","Kategori / meme"),
+        FilterInput("contract","Kontrak terverifikasi (ya/tidak)"),
+        FilterInput("honeypot","Tanpa honeypot (ya/tidak)"),
+        FilterInput("mint_authority","Tanpa mint authority (ya/tidak)"),
+        FilterInput("blacklist","Tanpa blacklist (ya/tidak)"),
+        FilterInput("dev_sold","Dev belum menjual (ya/tidak)"),
+        FilterInput("dev_liquidity","Dev belum menambah likuiditas (ya/tidak)")
+    )
+    TokenStage.BONDING -> listOf(
+        FilterInput("progress","Progres bonding (%)"),
+        FilterInput("progress_range","Rentang progres (mis. 50–99)"),
+        FilterInput("bonding_target","Target bonding"),
+        FilterInput("volume_window","Volume (1m / 5m / 1j / 24j)"),
+        FilterInput("price_change","Kenaikan harga (1m / 5m / 1j)"),
+        FilterInput("buyers_min","Pembeli unik minimum"),
+        FilterInput("txns_min","Transaksi minimum"),
+        FilterInput("market_cap_min","Market cap minimum ($)"),
+        FilterInput("market_cap_max","Market cap maksimum ($)"),
+        FilterInput("liquidity_min","Likuiditas minimum ($)"),
+        FilterInput("mcap_fdv","Rasio market cap / FDV"),
+        FilterInput("holders_min","Holder minimum"),
+        FilterInput("top10_max","Top 10 holder maksimum (%)"),
+        FilterInput("dev_sold","Dev belum menjual (ya/tidak)"),
+        FilterInput("dev_holds","Dev masih pegang token (ya/tidak)"),
+        FilterInput("honeypot","Tanpa honeypot (ya/tidak)"),
+        FilterInput("lp_locked","Likuiditas terkunci (ya/tidak)"),
+        FilterInput("contract_safe","Kontrak aman (ya/tidak)"),
+        FilterInput("launchpad","Launchpad")
+    )
+    TokenStage.MIGRATED -> listOf(
+        FilterInput("migration_status","Status migrasi (sudah / baru)"),
+        FilterInput("migration_age","Waktu migrasi (1m / 5m / 15m / 1j / 24j)"),
+        FilterInput("creation_speed","Waktu sejak pembuatan (cepat / normal)"),
+        FilterInput("liquidity_min","Likuiditas pasca-migrasi minimum ($)"),
+        FilterInput("volume_window","Volume pasca-migrasi (1m / 5m / 1j / 24j)"),
+        FilterInput("price_change","Perubahan harga (naik / turun / stabil)"),
+        FilterInput("buyers_min","Pembeli unik minimum"),
+        FilterInput("txns_min","Transaksi minimum"),
+        FilterInput("market_cap_min","Market cap minimum ($)"),
+        FilterInput("market_cap_max","Market cap maksimum ($)"),
+        FilterInput("holders_min","Holder minimum"),
+        FilterInput("top10_max","Top 10 holder maksimum (%)"),
+        FilterInput("dev_sold","Dev belum menjual (ya/tidak)"),
+        FilterInput("dev_holds","Dev masih pegang token (ya/tidak)"),
+        FilterInput("honeypot","Tanpa honeypot (ya/tidak)"),
+        FilterInput("mint_authority","Tanpa mint authority (ya/tidak)"),
+        FilterInput("lp_locked","Likuiditas terkunci (ya/tidak)"),
+        FilterInput("launchpad","Launchpad")
+    )
+}
+
 private data class ScannerRow(
     val mint:String, val name:String, val symbol:String, val pair:TokenPair,
     val score:Int, val label:String, val reasons:List<String>, val risk:String,
@@ -95,14 +159,16 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
     var stopLoss by remember { mutableStateOf(sim.stopLoss().toString()) }
     var takeProfit by remember { mutableStateOf(sim.takeProfit().toString()) }
     var minScore by remember { mutableStateOf(sim.minScore().toString()) }
+    val filterFields=remember { androidx.compose.runtime.mutableStateMapOf<String,String>() }
+    val snackbar=remember { SnackbarHostState() }
     var onlyLiquid by remember { mutableStateOf(false) }
-    var minMc by remember { mutableStateOf("0") }
-    var maxMc by remember { mutableStateOf("1000000000") }
-    var minVol by remember { mutableStateOf("0") }
-    var minLp by remember { mutableStateOf("0") }
-    var minBuyCount by remember { mutableStateOf("0") }
-    var maxSellCount by remember { mutableStateOf("999999") }
-    var filterScore by remember { mutableStateOf("0") }
+    var minMc by remember { mutableStateOf("") }
+    var maxMc by remember { mutableStateOf("") }
+    var minVol by remember { mutableStateOf("") }
+    var minLp by remember { mutableStateOf("") }
+    var minBuyCount by remember { mutableStateOf("") }
+    var maxSellCount by remember { mutableStateOf("") }
+    var filterScore by remember { mutableStateOf("") }
     var wLiquidity by remember { mutableFloatStateOf(sim.scoreWeight("liquidity",25).toFloat()) }
     var wVolume by remember { mutableFloatStateOf(sim.scoreWeight("volume",20).toFloat()) }
     var wBuy by remember { mutableFloatStateOf(sim.scoreWeight("buy",20).toFloat()) }
@@ -197,25 +263,44 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
         while(true){refresh();delay(ScannerRuntime.POLL_INTERVAL_MS)}
     }
 
+
     fun filterPasses(row:ScannerRow):Boolean {
+        val f=filterFields
         val mc=row.pair.marketCap?:row.pair.fdv?:0.0
-        return row.stage==stage && (!onlyLiquid || (row.pair.liquidityUsd?:0.0)>=3000.0) &&
-            mc >= (minMc.toDoubleOrNull()?:0.0) && mc <= (maxMc.toDoubleOrNull()?:Double.MAX_VALUE) &&
-            (row.pair.liquidityUsd?:0.0)>=(minLp.toDoubleOrNull()?:0.0) &&
-            (row.pair.volume1h?:0.0)>=(minVol.toDoubleOrNull()?:0.0) &&
-            (row.pair.buys5m?:0)>=(minBuyCount.toIntOrNull()?:0) &&
-            (row.pair.sells5m?:0)<=(maxSellCount.toIntOrNull()?:Int.MAX_VALUE) &&
-            row.score>=(filterScore.toIntOrNull()?:0)
+        val mcMin=(f["market_cap_min"]?:minMc).toDoubleOrNull()
+        val mcMax=(f["market_cap_max"]?:maxMc).toDoubleOrNull()
+        val lpMin=(f["liquidity_min"]?:minLp).toDoubleOrNull()
+        val volMin=(f["volume_1h_min"]?:minVol).toDoubleOrNull()
+        val buyersMin=(f["buyers_min"]?:minBuyCount).toIntOrNull()
+        val txnsMin=f["txns_min"]?.toIntOrNull()
+        val scoreMin=(f["score_min"]?:filterScore).toIntOrNull()
+        val txns=(row.pair.buys5m?:0)+(row.pair.sells5m?:0)
+        return row.stage==stage &&
+            (mcMin==null || mc>=mcMin) && (mcMax==null || mc<=mcMax) &&
+            (lpMin==null || (row.pair.liquidityUsd?:0.0)>=lpMin) &&
+            (volMin==null || (row.pair.volume1h?:0.0)>=volMin) &&
+            (buyersMin==null || (row.pair.buys5m?:0)>=buyersMin) &&
+            (txnsMin==null || txns>=txnsMin) &&
+            (scoreMin==null || row.score>=scoreMin)
     }
     val visibleRows=rows.filter(::filterPasses)
     val rejectedRows=rows.filter{it.stage==stage && !filterPasses(it)}
+
     fun saveCurrentFilter() {
-        sim.setFilterConfig(stage.name,listOf(minMc,maxMc,minLp,minVol,minBuyCount,maxSellCount,filterScore,onlyLiquid.toString()).joinToString("~"))
+        val json=JsonObject()
+        filterFields.forEach { (k,v)->json.addProperty(k,v) }
+        sim.setFilterConfig(stage.name,json.toString())
+        scope.launch { snackbar.showSnackbar("Filter ${stage.name} berhasil disimpan") }
     }
     LaunchedEffect(stage) {
-        sim.filterConfig(stage.name)?.split("~")?.takeIf{it.size==8}?.let { v ->
-            minMc=v[0]; maxMc=v[1]; minLp=v[2]; minVol=v[3]
-            minBuyCount=v[4]; maxSellCount=v[5]; filterScore=v[6]; onlyLiquid=v[7].toBoolean()
+        filterFields.clear()
+        filterInputs(stage).forEach { filterFields[it.key]="" }
+        val saved=sim.filterConfig(stage.name)
+        if(!saved.isNullOrBlank()) runCatching {
+            val obj=JsonParser.parseString(saved).asJsonObject
+            filterInputs(stage).forEach { field ->
+                filterFields[field.key]=obj.get(field.key)?.takeUnless{it.isJsonNull}?.asString.orEmpty()
+            }
         }
     }
 
