@@ -252,26 +252,12 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                         TextButton(onClick={keyDraft=pumpApiKey;showKeyDialog=true}){Text("API")}
                     }
                     Card { Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("SCANNER PUMP.FUN",style=MaterialTheme.typography.labelMedium)
-                                Text(if(scannerEnabled)"Scanner berjalan" else "Scanner dihentikan",style=MaterialTheme.typography.bodySmall)
-                            }
-                            Switch(checked=scannerEnabled,onCheckedChange={enabled->
-                                scannerEnabled=enabled;sim.setScannerEnabled(enabled)
-                                if(enabled && Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
-                                    notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                else updateScannerNotification(enabled)
-                            })
-                        }
                         val unrealized=positions.sumOf{pos->pnl(pos,currentPrice(pos.mint))?:0.0}
                         val realized=history.sumOf{it.pnlUsd}
                         val allPnl=realized+unrealized
                         Text("PnL ALL: $"+ "%.2f".format(Locale.US,allPnl)+" · Realized $"+ "%.2f".format(Locale.US,realized)+" · Floating $"+ "%.2f".format(Locale.US,unrealized),
                             color=if(allPnl>=0)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                         Text("Saldo virtual: $"+ "%.2f".format(Locale.US,balance)+" · Posisi: ${positions.size}")
-                        Text("PumpPortal: $stream",style=MaterialTheme.typography.bodySmall)
-                        Text("Update: $updated · Polling 30 detik",style=MaterialTheme.typography.bodySmall)
                     }}
                     when(section) {
                         AppSection.FILTER -> {
