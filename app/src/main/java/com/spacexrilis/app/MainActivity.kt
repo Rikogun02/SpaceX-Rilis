@@ -113,15 +113,31 @@ private fun SpaceXRilisApp(sim: SimulationStore) {
                     val event = parsePumpTokenEvent(raw)
                     if (event != null) {
                         pumpTokens = pumpTokens + (event.mint to event)
-                        val emptyPair = TokenPair(
+                        val dto = withContext(Dispatchers.IO) {
+                            runCatching {
+                                ApiFactory.dexScreener.tokenPairs(event.mint).pairs.orEmpty()
+                                    .filter { it.chainId.equals("solana", true) }
+                                    .maxByOrNull { it.liquidity?.get("usd") ?: 0.0 }
+                            }.getOrNull()
+                        }
+                        val eventPair = if (dto == null) TokenPair(
                             pairAddress = "", mintAddress = event.mint, dexId = if (event.migrated) "pump-swap" else "pump.fun",
                             priceUsd = null, liquidityUsd = null, volume5m = null, volume1h = null, volume24h = null,
                             change5m = null, change1h = null, change24h = null, marketCap = null, fdv = null,
                             buys5m = null, sells5m = null, pairCreatedAt = null
+                        ) else TokenPair(
+                            pairAddress = dto.pairAddress.orEmpty(), mintAddress = event.mint, dexId = dto.dexId.orEmpty(),
+                            priceUsd = dto.priceUsd?.toDoubleOrNull(), liquidityUsd = dto.liquidity?.get("usd"),
+                            volume5m = dto.volume?.get("m5"), volume1h = dto.volume?.get("h1"), volume24h = dto.volume?.get("h24"),
+                            change5m = dto.priceChange?.get("m5"), change1h = dto.priceChange?.get("h1"),
+                            change24h = dto.priceChange?.get("h24"), marketCap = dto.marketCap, fdv = dto.fdv,
+                            buys5m = dto.txns?.get("m5")?.get("buys")?.toInt(), sells5m = dto.txns?.get("m5")?.get("sells")?.toInt(),
+                            pairCreatedAt = dto.pairCreatedAt
                         )
-                        val scored = TokenScorer.score(emptyPair, false)
-                        val liveRow = ScannerRow(event.mint, event.name, event.symbol, emptyPair, scored.score,
-                            if (event.migrated) "MIGRATED · DATA PAIR MENUNGGU" else "PUMP.FUN BARU · DATA PAIR MENUNGGU",
+                        val scored = TokenScorer.score(eventPair, false)
+                        val liveRow = ScannerRow(event.mint, dto?.baseToken?.name ?: event.name,
+                            dto?.baseToken?.symbol ?: event.symbol, eventPair, scored.score,
+                            if (dto == null) "PAIR BELUM TERSEDIA" else if (event.migrated) "MIGRATED" else "PUMP.FUN LIVE",
                             scored.reasons, "Belum diperiksa RugCheck")
                         rows = (listOf(liveRow) + rows.filterNot { it.mint == event.mint }).take(120)
                     }
