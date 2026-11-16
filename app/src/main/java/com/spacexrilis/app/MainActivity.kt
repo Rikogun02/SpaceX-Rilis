@@ -65,7 +65,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
     var pumpApiKey by remember { mutableStateOf(keyStore.read()) }
     var keyDraft by remember { mutableStateOf("") }
     var showKeyDialog by remember { mutableStateOf(false) }
-    var drawerOpen by remember { mutableStateOf(false) }
+    val drawerState= rememberDrawerState(DrawerValue.Closed)
     var section by remember { mutableStateOf(AppSection.FILTER) }
     var stage by remember { mutableStateOf(TokenStage.NEW) }
     var rows by remember { mutableStateOf<List<ScannerRow>>(emptyList()) }
@@ -153,7 +153,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
 
     MaterialTheme(colorScheme=darkColorScheme()) {
         ModalNavigationDrawer(
-            drawerState= rememberDrawerState(if(drawerOpen)DrawerValue.Open else DrawerValue.Closed),
+            drawerState=drawerState,
             gesturesEnabled=true,
             drawerContent={
                 ModalDrawerSheet {
@@ -164,7 +164,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                     HorizontalDivider()
                     AppSection.entries.forEach { item ->
                         NavigationDrawerItem(label={Text(item.title)},selected=section==item,
-                            onClick={section=item;drawerOpen=false},modifier=Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                            onClick={section=item;scope.launch{drawerState.close()}},modifier=Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             badge={Text(if(item==AppSection.POSITIONS) positions.size.toString() else "")})
                         Text(item.subtitle,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(start=30.dp,bottom=6.dp))
                     }
@@ -176,7 +176,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
             Scaffold { pad ->
                 Column(Modifier.fillMaxSize().padding(pad).padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment= androidx.compose.ui.Alignment.CenterVertically) {
-                        OutlinedButton(onClick={drawerOpen=true}) { Text("☰ Menu") }
+                        OutlinedButton(onClick={ { scope.launch { drawerState.open() } } }) { Text("☰ Menu") }
                         Column(Modifier.weight(1f)) {
                             Text(section.title.uppercase(),style=MaterialTheme.typography.titleLarge)
                             Text(section.subtitle,style=MaterialTheme.typography.labelSmall)
