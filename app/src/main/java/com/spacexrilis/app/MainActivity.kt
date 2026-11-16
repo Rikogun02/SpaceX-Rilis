@@ -241,7 +241,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                 }
             }
         ) {
-            Scaffold(bottomBar={ NavigationBar { AppSection.entries.forEach { item -> NavigationBarItem(selected=section==item,onClick={section=item},icon={Text(item.title.take(1))},label={Text(item.title)}) } } }) { pad ->
+            Scaffold(snackbarHost={SnackbarHost(snackbar)},bottomBar={ NavigationBar { AppSection.entries.forEach { item -> NavigationBarItem(selected=section==item,onClick={section=item},icon={Text(item.title.take(1))},label={Text(item.title)}) } } }) { pad ->
                 Column(Modifier.fillMaxSize().padding(pad).padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment= androidx.compose.ui.Alignment.CenterVertically) {
 
@@ -262,52 +262,22 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                     when(section) {
                         AppSection.FILTER -> {
                             Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                TokenStage.entries.forEach { s ->
-                                    FilterChip(selected=stage==s,onClick={stage=s},label={Text(when(s){TokenStage.NEW->"New";TokenStage.BONDING->"Bonding";TokenStage.MIGRATED->"Migrasi"})})
+                                TokenStage.entries.forEach { st ->
+                                    FilterChip(selected=stage==st,onClick={stage=st},label={Text(when(st){TokenStage.NEW->"New";TokenStage.BONDING->"Bonding";TokenStage.MIGRATED->"Migrasi"})})
                                 }
                             }
+                            Card { Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                                Text("FILTER ${stage.name}",style=MaterialTheme.typography.titleSmall)
+                                Text("Isi nilai secara manual. Kolom kosong berarti tidak membatasi filter.",style=MaterialTheme.typography.bodySmall)
+                                filterInputs(stage).forEach { field ->
+                                    OutlinedTextField(value=filterFields[field.key].orEmpty(),onValueChange={filterFields[field.key]=it},label={Text(field.label)},placeholder={Text("Isi manual")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+                                }
+                                Button(onClick={saveCurrentFilter()},modifier=Modifier.fillMaxWidth()) { Text("SIMPAN FILTER ${stage.name}") }
+                            }}
                             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                                 Button(onClick={scope.launch{refresh()}},enabled=!loading){Text(if(loading)"Memindai…" else "Scan sekarang")}
-                                OutlinedButton(onClick={onlyLiquid=!onlyLiquid}){Text(if(onlyLiquid)"Semua LP" else "LP ≥ $3k")}
                             }
-                            Card { Column(Modifier.fillMaxWidth().padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                                Text("FILTER LENGKAP",style=MaterialTheme.typography.titleSmall)
-                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                    OutlinedTextField(minMc,{minMc=it.filter{ch->ch.isDigit()}},label={Text("MC min $")},modifier=Modifier.weight(1f),singleLine=true)
-                                    OutlinedTextField(maxMc,{maxMc=it.filter{ch->ch.isDigit()}},label={Text("MC max $")},modifier=Modifier.weight(1f),singleLine=true)
-                                }
-                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                    OutlinedTextField(minLp,{minLp=it.filter{ch->ch.isDigit()}},label={Text("LP min $")},modifier=Modifier.weight(1f),singleLine=true)
-                                    OutlinedTextField(minVol,{minVol=it.filter{ch->ch.isDigit()}},label={Text("Vol 1j min $")},modifier=Modifier.weight(1f),singleLine=true)
-                                }
-                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                    OutlinedTextField(minBuyCount,{minBuyCount=it.filter{ch->ch.isDigit()}},label={Text("Buy min")},modifier=Modifier.weight(1f),singleLine=true)
-                                    OutlinedTextField(maxSellCount,{maxSellCount=it.filter{ch->ch.isDigit()}},label={Text("Sell max")},modifier=Modifier.weight(1f),singleLine=true)
-                                    OutlinedTextField(filterScore,{filterScore=it.filter{ch->ch.isDigit()}},label={Text("Skor min")},modifier=Modifier.weight(1f),singleLine=true)
-                                }
-                                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
-                                    Button(onClick={saveCurrentFilter()}) { Text("Simpan filter ${when(stage){TokenStage.NEW->"New";TokenStage.BONDING->"Bonding";TokenStage.MIGRATED->"Migrasi"}}") }
-                                }
-                            }}
                             Text(status,style=MaterialTheme.typography.bodySmall)
-                            Card { Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                                Text("KONSOL · TIDAK LULUS FILTER (${rejectedRows.size})",style=MaterialTheme.typography.titleSmall)
-                                if(rejectedRows.isEmpty()) Text("Belum ada token yang gagal filter.",style=MaterialTheme.typography.bodySmall)
-                                else rejectedRows.take(30).forEach { rejected ->
-                                    val mc=rejected.pair.marketCap?:rejected.pair.fdv?:0.0
-                                    val reasons=buildList {
-                                        if(mc<(minMc.toDoubleOrNull()?:0.0)) add("MC di bawah minimum")
-                                        if(mc>(maxMc.toDoubleOrNull()?:Double.MAX_VALUE)) add("MC di atas maksimum")
-                                        if(onlyLiquid && (rejected.pair.liquidityUsd?:0.0)<3000.0) add("LP di bawah $3k")
-                                        if((rejected.pair.liquidityUsd?:0.0)<(minLp.toDoubleOrNull()?:0.0)) add("LP kurang")
-                                        if((rejected.pair.volume1h?:0.0)<(minVol.toDoubleOrNull()?:0.0)) add("Volume 1j kurang")
-                                        if((rejected.pair.buys5m?:0)<(minBuyCount.toIntOrNull()?:0)) add("Buy kurang")
-                                        if((rejected.pair.sells5m?:0)>(maxSellCount.toIntOrNull()?:Int.MAX_VALUE)) add("Sell terlalu tinggi")
-                                        if(rejected.score<(filterScore.toIntOrNull()?:0)) add("Skor di bawah minimum")
-                                    }
-                                    Text("${rejected.symbol} · ${reasons.joinToString(", ").ifBlank{"Tidak memenuhi filter"}}",style=MaterialTheme.typography.bodySmall)
-                                }
-                            }}
                             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                                 items(visibleRows,key={it.mint}) { row ->
                                     Card { Column(Modifier.fillMaxWidth().padding(11.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
