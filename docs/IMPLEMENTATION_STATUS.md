@@ -23,3 +23,10 @@ Simulation only. Tidak ada seed phrase/private key, signing, swap, atau jalur li
 - DexScreener: https://docs.dexscreener.com/api/reference
 - PumpPortal real-time data: https://pumpportal.fun/data-api/real-time/
 - RugCheck summary endpoint reference: https://fluxrpc.com/docs/rugcheck/getTokenReportSummary
+
+
+## PumpPortal API key integration
+- Added an in-app API-key setting. The key is encrypted at rest with Android Keystore AES-GCM and is not part of the APK build configuration or repository source.
+- The WebSocket URL adds the `api-key` query parameter only when a key is saved.
+- New-token and migration subscriptions remain the only enabled PumpPortal subscriptions; paid trade-stream subscriptions and all trading endpoints are not used.
+- Users must supply their own PumpPortal API key in the app settings. Do not paste API keys into public issues, chat, or source files.
