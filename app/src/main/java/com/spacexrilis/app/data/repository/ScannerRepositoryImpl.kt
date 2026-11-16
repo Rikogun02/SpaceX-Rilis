@@ -72,7 +72,6 @@ class ScannerRepositoryImpl(
                 evidence = obj.get("value")?.takeUnless { it.isJsonNull }?.toString()
             )
         }.orEmpty()
-        val authorities = json.getAsJsonObject("token")?.getAsJsonObject("mintAuthority")
         RugCheckAnalysis(
             mintAddress = mintAddress,
             rawScore = rawScore,
