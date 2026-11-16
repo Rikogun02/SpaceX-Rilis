@@ -24,6 +24,8 @@ class SimulationStore(ctx:Context) {
     fun setTakeProfit(v:Double)=p.edit().putFloat("take_profit",v.coerceIn(0.0,10000.0).toFloat()).apply()
     fun minScore()=p.getInt("min_score",80)
     fun setMinScore(v:Int)=p.edit().putInt("min_score",v.coerceIn(0,100)).apply()
+    fun scoreWeight(key:String,default:Int)=p.getInt("score_$key",default)
+    fun setScoreWeight(key:String,value:Int)=p.edit().putInt("score_$key",value.coerceIn(0,100)).apply()
 
     @Synchronized fun open(m:String,s:String,price:Double,usd:Double):Boolean {
         if(price<=0||usd<=0||usd>balance()||positions().any{it.mint==m}) return false
