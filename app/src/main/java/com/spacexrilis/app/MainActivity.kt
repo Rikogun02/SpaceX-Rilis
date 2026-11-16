@@ -171,7 +171,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
     MaterialTheme(colorScheme=darkColorScheme()) {
         ModalNavigationDrawer(
             drawerState=drawerState,
-            gesturesEnabled=true,
+            gesturesEnabled=false,
             drawerContent={
                 ModalDrawerSheet {
                     Column(Modifier.fillMaxWidth().padding(18.dp)) {
@@ -190,10 +190,10 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                 }
             }
         ) {
-            Scaffold { pad ->
+            Scaffold(bottomBar={ NavigationBar { AppSection.entries.forEach { item -> NavigationBarItem(selected=section==item,onClick={section=item},icon={Text(item.title.take(1))},label={Text(item.title)}) } } }) { pad ->
                 Column(Modifier.fillMaxSize().padding(pad).padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment= androidx.compose.ui.Alignment.CenterVertically) {
-                        OutlinedButton(onClick={scope.launch { drawerState.open() }}) { Text("☰ Menu") }
+
                         Column(Modifier.weight(1f)) {
                             Text(section.title.uppercase(),style=MaterialTheme.typography.titleLarge)
                             Text(section.subtitle,style=MaterialTheme.typography.labelSmall)
