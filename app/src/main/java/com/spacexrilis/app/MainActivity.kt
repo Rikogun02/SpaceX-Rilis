@@ -10,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.google.gson.JsonObject
@@ -22,6 +24,7 @@ import com.spacexrilis.app.data.simulation.SimPosition
 import com.spacexrilis.app.data.simulation.SimTrade
 import com.spacexrilis.app.domain.model.TokenPair
 import com.spacexrilis.app.domain.scoring.TokenScorer
+import com.spacexrilis.app.domain.scoring.ScoreWeights
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
@@ -61,6 +64,7 @@ class MainActivity : ComponentActivity() {
 private fun SpaceXRilisApp(sim:SimulationStore) {
     val scope= rememberCoroutineScope()
     val context= LocalContext.current
+    val clipboard= LocalClipboardManager.current
     val keyStore= remember { PumpPortalKeyStore(context) }
     var pumpApiKey by remember { mutableStateOf(keyStore.read()) }
     var keyDraft by remember { mutableStateOf("") }
@@ -83,6 +87,19 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
     var takeProfit by remember { mutableStateOf(sim.takeProfit().toString()) }
     var minScore by remember { mutableStateOf(sim.minScore().toString()) }
     var onlyLiquid by remember { mutableStateOf(false) }
+    var minMc by remember { mutableStateOf("0") }
+    var maxMc by remember { mutableStateOf("1000000000") }
+    var minVol by remember { mutableStateOf("0") }
+    var minLp by remember { mutableStateOf("0") }
+    var minBuyCount by remember { mutableStateOf("0") }
+    var maxSellCount by remember { mutableStateOf("999999") }
+    var filterScore by remember { mutableStateOf("0") }
+    var wLiquidity by remember { mutableFloatStateOf(sim.scoreWeight("liquidity",25).toFloat()) }
+    var wVolume by remember { mutableFloatStateOf(sim.scoreWeight("volume",20).toFloat()) }
+    var wBuy by remember { mutableFloatStateOf(sim.scoreWeight("buy",20).toFloat()) }
+    var wMomentum by remember { mutableFloatStateOf(sim.scoreWeight("momentum",15).toFloat()) }
+    var wSafety by remember { mutableFloatStateOf(sim.scoreWeight("safety",20).toFloat()) }
+    val scoreWeights=ScoreWeights(wLiquidity.toInt(),wVolume.toInt(),wBuy.toInt(),wMomentum.toInt(),wSafety.toInt())
 
     fun syncPortfolio() { balance=sim.balance(); positions=sim.positions(); history=sim.history() }
     fun currentPrice(mint:String)=rows.firstOrNull{it.mint==mint}?.pair?.priceUsd
@@ -101,7 +118,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                     val pair=TokenPair(dto.pairAddress.orEmpty(),mint,dto.dexId.orEmpty(),dto.priceUsd?.toDoubleOrNull(),dto.liquidity?.get("usd"),
                         dto.volume?.get("m5"),dto.volume?.get("h1"),dto.volume?.get("h24"),dto.priceChange?.get("m5"),dto.priceChange?.get("h1"),
                         dto.priceChange?.get("h24"),dto.marketCap,dto.fdv,dto.txns?.get("m5")?.get("buys")?.toInt(),dto.txns?.get("m5")?.get("sells")?.toInt(),dto.pairCreatedAt)
-                    val scored=TokenScorer.score(pair,false)
+                    val scored=TokenScorer.score(pair,false,scoreWeights)
                     val ev=pumpTokens[mint]
                     ScannerRow(mint,dto.baseToken?.name?:p.description?:"Unknown token",dto.baseToken?.symbol?:"—",pair,scored.score,scored.label,
                         scored.reasons,"Belum diperiksa RugCheck",when { ev?.migrated==true->TokenStage.MIGRATED; ev!=null->TokenStage.BONDING; else->TokenStage.NEW })
@@ -141,7 +158,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                     val dto=withContext(Dispatchers.IO){runCatching{ApiFactory.dexScreener.tokenPairs(event.mint).pairs.orEmpty().filter{it.chainId.equals("solana",true)}.maxByOrNull{it.liquidity?.get("usd")?:0.0}}.getOrNull()}
                     val pair=if(dto==null) TokenPair("",event.mint,if(event.migrated)"pump-swap" else "pump.fun",null,null,null,null,null,null,null,null,null,null,null,null,null)
                     else TokenPair(dto.pairAddress.orEmpty(),event.mint,dto.dexId.orEmpty(),dto.priceUsd?.toDoubleOrNull(),dto.liquidity?.get("usd"),dto.volume?.get("m5"),dto.volume?.get("h1"),dto.volume?.get("h24"),dto.priceChange?.get("m5"),dto.priceChange?.get("h1"),dto.priceChange?.get("h24"),dto.marketCap,dto.fdv,dto.txns?.get("m5")?.get("buys")?.toInt(),dto.txns?.get("m5")?.get("sells")?.toInt(),dto.pairCreatedAt)
-                    val score=TokenScorer.score(pair,false)
+                    val score=TokenScorer.score(pair,false,scoreWeights)
                     val live=ScannerRow(event.mint,dto?.baseToken?.name?:event.name,dto?.baseToken?.symbol?:event.symbol,pair,score.score,
                         if(event.migrated)"MIGRATED" else "PUMP.FUN LIVE",score.reasons,"Belum diperiksa RugCheck",if(event.migrated)TokenStage.MIGRATED else TokenStage.BONDING)
                     rows=(listOf(live)+rows.filterNot{it.mint==event.mint}).take(120)
