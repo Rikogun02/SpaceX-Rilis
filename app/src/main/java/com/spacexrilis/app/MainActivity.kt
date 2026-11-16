@@ -176,7 +176,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
             Scaffold { pad ->
                 Column(Modifier.fillMaxSize().padding(pad).padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment= androidx.compose.ui.Alignment.CenterVertically) {
-                        OutlinedButton(onClick={ { scope.launch { drawerState.open() } } }) { Text("☰ Menu") }
+                        OutlinedButton(onClick={scope.launch { drawerState.open() }}) { Text("☰ Menu") }
                         Column(Modifier.weight(1f)) {
                             Text(section.title.uppercase(),style=MaterialTheme.typography.titleLarge)
                             Text(section.subtitle,style=MaterialTheme.typography.labelSmall)
@@ -220,7 +220,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                                     "RugCheck score $raw · $risk"
                                                 }
                                                 rows=rows.map{if(it.mint==row.mint)it.copy(risk=msg)else it}
-                                            }){Text("Cek risiko")}
+                                            }}){Text("Cek risiko")}
                                             OutlinedButton(onClick={
                                                 val ok=sim.open(row.mint,row.symbol,row.pair.priceUsd?:0.0,sim.lot())
                                                 syncPortfolio();status=if(ok)"Posisi simulasi dibuka: ${row.symbol}" else "Gagal buka posisi: saldo/harga/duplikat"
