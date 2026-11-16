@@ -338,6 +338,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                         Text("SL/TP diperiksa setiap siklus scan 30 detik. Semua order hanya simulasi.",style=MaterialTheme.typography.bodySmall)
                                     }}
                                 }
+                                item { Card { Column(Modifier.fillMaxWidth().padding(12.dp)) { Text("MANUAL SCORING · BOBOT"); Text("Likuiditas: "+wLiquidity.toInt()+"%"); Slider(value=wLiquidity,onValueChange={wLiquidity=it;sim.setScoreWeight("liquidity",it.toInt())},valueRange=0f..100f); Text("Volume: "+wVolume.toInt()+"%"); Slider(value=wVolume,onValueChange={wVolume=it;sim.setScoreWeight("volume",it.toInt())},valueRange=0f..100f); Text("Tekanan beli: "+wBuy.toInt()+"%"); Slider(value=wBuy,onValueChange={wBuy=it;sim.setScoreWeight("buy",it.toInt())},valueRange=0f..100f); Text("Momentum: "+wMomentum.toInt()+"%"); Slider(value=wMomentum,onValueChange={wMomentum=it;sim.setScoreWeight("momentum",it.toInt())},valueRange=0f..100f); Text("Keamanan: "+wSafety.toInt()+"%"); Slider(value=wSafety,onValueChange={wSafety=it;sim.setScoreWeight("safety",it.toInt())},valueRange=0f..100f) } } }
                                 item {
                                     OutlinedButton(onClick={keyDraft=pumpApiKey;showKeyDialog=true}){Text("Atur API Key PumpPortal")}
                                 }
