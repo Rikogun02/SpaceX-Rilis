@@ -312,6 +312,36 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                 }
                             }
                         }
+
+                        AppSection.CONSOLE -> {
+                            Card { Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                                Text("DASHBOARD SCANNER PUMP.FUN",style=MaterialTheme.typography.titleMedium)
+                                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(if(scannerEnabled)"Scanner berjalan" else "Scanner dihentikan")
+                                        Text("Polling 30 detik · Update $updated",style=MaterialTheme.typography.bodySmall)
+                                    }
+                                    Switch(checked=scannerEnabled,onCheckedChange={enabled->
+                                        scannerEnabled=enabled;sim.setScannerEnabled(enabled)
+                                        if(enabled && Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+                                            notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                        else updateScannerNotification(enabled)
+                                    })
+                                }
+                                Text("Status: $status")
+                                Text("PumpPortal: $stream")
+                                Button(onClick={scope.launch{refresh()}},enabled=!loading){Text(if(loading)"Memindai…" else "Scan sekarang")}
+                                Text("Token terpantau: ${rows.size} · Gagal filter: ${rejectedRows.size}")
+                            }}
+                            Card { Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                                Text("KONSOL · TOKEN TIDAK LOLOS FILTER ${stage.name} (${rejectedRows.size})",style=MaterialTheme.typography.titleSmall)
+                                Text("Pilih tahap token di halaman Filter untuk mengganti kelompok log.",style=MaterialTheme.typography.bodySmall)
+                                if(rejectedRows.isEmpty()) Text("Belum ada token yang gagal filter.")
+                                else rejectedRows.take(60).forEach { rejected ->
+                                    Text("${rejected.symbol} · ${rejected.mint.take(12)}… · Skor ${rejected.score}",style=MaterialTheme.typography.bodySmall)
+                                }
+                            }}
+                        }
                         AppSection.POSITIONS -> {
                             Text("POSISI TERBUKA · PnL BELUM DIREALISASI",style=MaterialTheme.typography.labelMedium)
                             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -388,6 +418,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                         sim.setScoreWeight("momentum",wMomentum.toInt())
                                         sim.setScoreWeight("safety",wSafety.toInt())
                                         status="Pengaturan Advance berhasil disimpan"
+                                        scope.launch { snackbar.showSnackbar("Pengaturan Advance berhasil disimpan") }
                                     },modifier=Modifier.fillMaxWidth()){Text("SIMPAN PENGATURAN ADVANCE")}
                                 }
                                 item {
