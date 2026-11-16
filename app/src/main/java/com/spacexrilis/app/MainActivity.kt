@@ -310,7 +310,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                     confirmButton={TextButton(onClick={keyStore.save(keyDraft);pumpApiKey=keyDraft.trim();showKeyDialog=false}){Text("Simpan")}},
                     dismissButton={Row{
                         TextButton(onClick={keyStore.clear();pumpApiKey="";keyDraft="";showKeyDialog=false}){Text("Hapus")}
-                        TextButton(onClick={showKeyDialog=false){Text("Batal")}
+                        TextButton(onClick={showKeyDialog=false}){Text("Batal")}
                     }}
                 )
             }
