@@ -1,22 +1,20 @@
-# SpaceX Rilis — implementation status
+# SpaceX Rilis — status implementasi
 
-## What the current build does
-- Fetches latest Solana token profiles from DexScreener and resolves market pairs.
-- Refreshes on a 30-second foreground UI polling loop while the app is open.
-- Opens a best-effort PumpPortal WebSocket stream with reconnect backoff; REST polling is the fallback.
-- Calculates a transparent heuristic score from liquidity, one-hour volume, five-minute buy/sell balance and short-term price movement.
-- Lets the user request a RugCheck summary. Missing RugCheck data is shown as unverified, never treated as safe.
-- Provides a local, persistent paper-trading balance and positions. It does not sign or submit blockchain transactions.
+- Penemuan kandidat token Solana memakai DexScreener latest token profiles.
+- Pair pasar diperkaya dari endpoint token pairs DexScreener.
+- Polling REST 30 detik saat aplikasi terbuka.
+- PumpPortal WebSocket best-effort dengan reconnect backoff; polling REST menjadi jalur fallback.
+- Skor heuristik transparan berdasarkan likuiditas, volume 1 jam, rasio beli/jual 5 menit dan perubahan harga 5 menit.
+- RugCheck summary diminta sesuai kebutuhan; data gagal/tidak ada selalu dianggap belum terverifikasi.
+- Simulasi posisi dan saldo disimpan lokal di perangkat.
 
-## Important limitations
-- DexScreener latest token profiles are discovery signals, not a complete Pump.fun feed. Pair data may be absent for brand-new tokens.
-- PumpPortal message schemas and access limits may change; WebSocket events are currently used as connection/event status, while token enrichment comes from DexScreener polling.
-- The heuristic score is not a probability of profit and is not a RugCheck score. It is not calibrated against historical outcomes.
-- RugCheck raw score is displayed as supplied; the app does not assume score direction or invent a normalized risk score.
-- Holder concentration, wallet clustering, creator history, LP lock/burn verification and bundle detection are not yet verified by this build.
-- Polling every 30 seconds occurs while the app process is active. Android may suspend background activity; this is not a guaranteed always-on background service.
-- Paper positions are stored locally on the device. Price snapshots are not continuously marked to market.
+## Batasan yang harus diketahui
+- DexScreener latest profiles bukan feed lengkap Pump.fun; token sangat baru bisa belum punya pair.
+- PumpPortal event stream saat ini menunjukkan konektivitas; pengayaan token dilakukan melalui polling DexScreener.
+- Skor bukan probabilitas profit, bukan skor RugCheck, dan belum dikalibrasi terhadap histori hasil.
+- Holder concentration, wallet clustering, riwayat creator, LP lock/burn, serta bundle detection belum diverifikasi pada build ini.
+- Polling 30 detik hanya berjalan selama aplikasi aktif; Android dapat menangguhkan aplikasi di background.
+- Posisi simulasi tersimpan lokal dan belum dihitung ulang mark-to-market otomatis.
 
-## Safety
-- Simulation only. No private key, seed phrase, signing, swap or live-buy path is implemented.
-- Use independent research and verify contract/mint addresses before any real-world decision.
+## Keamanan
+Simulation only. Tidak ada seed phrase/private key, signing, swap, atau jalur live-buy.

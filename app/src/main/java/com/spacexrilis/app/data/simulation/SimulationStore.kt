@@ -1,31 +1,10 @@
 package com.spacexrilis.app.data.simulation
-
 import android.content.Context
-
-data class SimPosition(val mint: String, val symbol: String, val entryPrice: Double, val amountUsd: Double, val openedAt: Long)
-
-class SimulationStore(context: Context) {
-    private val prefs = context.getSharedPreferences("spacex_simulation", Context.MODE_PRIVATE)
-    fun balance(): Double = prefs.getFloat("balance", 1000f).toDouble()
-    fun positions(): List<SimPosition> = prefs.getStringSet("positions", emptySet()).orEmpty().mapNotNull {
-        val p = it.split("|")
-        if (p.size != 5) null else runCatching { SimPosition(p[0], p[1], p[2].toDouble(), p[3].toDouble(), p[4].toLong()) }.getOrNull()
-    }
-    @Synchronized fun open(mint: String, symbol: String, price: Double, amountUsd: Double): Boolean {
-        if (price <= 0 || amountUsd <= 0 || amountUsd > balance() || positions().any { it.mint == mint }) return false
-        val rows = positions().toMutableList() + SimPosition(mint, symbol, price, amountUsd, System.currentTimeMillis())
-        prefs.edit().putFloat("balance", (balance() - amountUsd).toFloat())
-            .putStringSet("positions", rows.map { "${it.mint}|${it.symbol}|${it.entryPrice}|${it.amountUsd}|${it.openedAt}" }.toSet()).apply()
-        return true
-    }
-    @Synchronized fun close(mint: String, currentPrice: Double): Double? {
-        val rows = positions()
-        val p = rows.firstOrNull { it.mint == mint } ?: return null
-        if (currentPrice <= 0) return null
-        val proceeds = p.amountUsd * currentPrice / p.entryPrice
-        val remaining = rows.filterNot { it.mint == mint }
-        prefs.edit().putFloat("balance", (balance() + proceeds).toFloat())
-            .putStringSet("positions", remaining.map { "${it.mint}|${it.symbol}|${it.entryPrice}|${it.amountUsd}|${it.openedAt}" }.toSet()).apply()
-        return proceeds - p.amountUsd
-    }
+data class SimPosition(val mint:String,val symbol:String,val entryPrice:Double,val amountUsd:Double,val openedAt:Long)
+class SimulationStore(ctx:Context){
+ private val p=ctx.getSharedPreferences("spacex_simulation",Context.MODE_PRIVATE)
+ fun balance()=p.getFloat("balance",1000f).toDouble()
+ fun positions():List<SimPosition> = p.getStringSet("positions",emptySet()).orEmpty().mapNotNull{v->val a=v.split("|");if(a.size!=5)null else runCatching{SimPosition(a[0],a[1],a[2].toDouble(),a[3].toDouble(),a[4].toLong())}.getOrNull()}
+ @Synchronized fun open(m:String,s:String,price:Double,usd:Double):Boolean{if(price<=0||usd<=0||usd>balance()||positions().any{it.mint==m})return false;val all=positions()+SimPosition(m,s,price,usd,System.currentTimeMillis());p.edit().putFloat("balance",(balance()-usd).toFloat()).putStringSet("positions",all.map{"${it.mint}|${it.symbol}|${it.entryPrice}|${it.amountUsd}|${it.openedAt}"}.toSet()).apply();return true}
+ @Synchronized fun close(m:String,price:Double):Double?{val all=positions();val x=all.firstOrNull{it.mint==m}?:return null;if(price<=0)return null;val proceeds=x.amountUsd*price/x.entryPrice;p.edit().putFloat("balance",(balance()+proceeds).toFloat()).putStringSet("positions",all.filterNot{it.mint==m}.map{"${it.mint}|${it.symbol}|${it.entryPrice}|${it.amountUsd}|${it.openedAt}"}.toSet()).apply();return proceeds-x.amountUsd}
 }
