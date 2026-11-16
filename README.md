@@ -5,7 +5,7 @@ Android Solana memecoin scanner prototype. Built with Kotlin, Jetpack Compose, R
 ## Features in the current debug build
 - Solana token discovery from DexScreener latest profiles.
 - Market-pair enrichment and 30-second foreground polling.
-- Best-effort PumpPortal new-token and migration WebSocket subscriptions.
+- PumpPortal new-token and migration WebSocket subscriptions; API key can be entered in-app and is encrypted with Android Keystore (never committed to GitHub).
 - On-demand RugCheck summary with raw and normalized values shown as returned by the API.
 - Heuristic market-activity score.
 - Local paper-trading balance and positions (default virtual balance: USD 1,000).
