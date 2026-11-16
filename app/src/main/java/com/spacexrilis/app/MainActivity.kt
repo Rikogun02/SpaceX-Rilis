@@ -249,8 +249,11 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                             Text("${row.name} (${row.symbol})",style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
                                             Text("${row.score}/100",color=MaterialTheme.colorScheme.primary)
                                         }
-                                        Text(row.mint,style=MaterialTheme.typography.labelSmall)
-                                        Text("Harga $"+(row.pair.priceUsd?:0.0)+" · LP $"+(row.pair.liquidityUsd?:0.0))
+                                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                                            Text(row.mint,style=MaterialTheme.typography.labelSmall,modifier=Modifier.weight(1f))
+                                            TextButton(onClick={clipboard.setText(AnnotatedString(row.mint))}){Text("Salin mint")}
+                                        }
+                                        Text("MC "+(row.pair.marketCap?.let{"$"+"%,.0f".format(Locale.US,it)} ?: row.pair.fdv?.let{"FDV estimasi $"+"%,.0f".format(Locale.US,it)} ?: "belum tersedia")+" · Harga $"+(row.pair.priceUsd?:0.0)+" · LP $"+(row.pair.liquidityUsd?:0.0))
                                         Text("Vol 1j $"+(row.pair.volume1h?:0.0)+" · 5m ${row.pair.change5m?:0.0}%",style=MaterialTheme.typography.bodySmall)
                                         Text("${row.label} · ${row.reasons.take(2).joinToString(" · ")}",style=MaterialTheme.typography.bodySmall)
                                         Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
