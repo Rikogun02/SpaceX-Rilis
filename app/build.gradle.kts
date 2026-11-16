@@ -7,10 +7,10 @@ android {
     namespace = "com.spacexrilis.app"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.spacexrilis.app"
+        applicationId = "com.spacexrilis.app2"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
+        versionCode = 5
         versionName = "1.0.2"
         buildConfigField("String", "DEXSCREENER_BASE_URL", "\"https://api.dexscreener.com/\"")
         buildConfigField("String", "RUGCHECK_BASE_URL", "\"https://api.rugcheck.xyz/\"")
@@ -20,8 +20,7 @@ android {
     buildFeatures { compose = true; buildConfig = true }
     buildTypes {
         getByName("release") {
-            // Installable test release signed with the standard debug certificate.
-            // Use a persistent private release keystore for stable update signatures.
+            // Temporary test signing. Configure a persistent private keystore for future updates.
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
         }
