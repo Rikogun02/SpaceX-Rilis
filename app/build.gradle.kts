@@ -18,10 +18,17 @@ android {
         buildConfigField("String", "PUMPPORTAL_WS_URL", "\"wss://pumpportal.fun/api/data\"")
     }
     buildFeatures { compose = true; buildConfig = true }
+    signingConfigs {
+        create("release") {
+            storeFile = file(System.getenv("KEYSTORE_FILE") ?: "release-key.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
+    }
     buildTypes {
         getByName("release") {
-            // Temporary test signing. Configure a persistent private keystore for future updates.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
         }
     }
