@@ -416,16 +416,15 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                     })
                                 }
                                 Text("Status: $status")
-                                Text("PumpPortal: $stream")
                                 Button(onClick={scope.launch{refresh()}},enabled=!loading){Text(if(loading)"Memindai…" else "Scan sekarang")}
-                                Text("Token terpantau: ${rows.size} · Gagal filter: ${rejectedRows.size}")
+                                Text("Token terpantau: ${rows.size}")
                             }}
                             Card { Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                                Text("KONSOL · TOKEN TIDAK LOLOS FILTER ${stage.name} (${rejectedRows.size})",style=MaterialTheme.typography.titleSmall)
-                                Text("Pilih tahap token di halaman Filter untuk mengganti kelompok log.",style=MaterialTheme.typography.bodySmall)
+                                Text("DITOLAK ${stage.name} · ${rejectedRows.size}",style=MaterialTheme.typography.labelMedium)
+                                Text("Daftar ringkas alasan penolakan.",style=MaterialTheme.typography.labelSmall)
                                 if(rejectedRows.isEmpty()) Text("Belum ada token yang gagal filter.")
                                 else rejectedRows.take(60).forEach { rejected ->
-                                    Text("${rejected.symbol} · ${rejected.mint.take(12)}… · Skor ${rejected.score}",style=MaterialTheme.typography.bodySmall)
+                                    Text("${rejected.symbol}: filter ${stage.name} tidak terpenuhi",style=MaterialTheme.typography.labelSmall)
                                 }
                             }}
                         }
