@@ -12,6 +12,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -45,11 +47,11 @@ import java.util.Locale
 private data class PumpPortalToken(val mint:String,val name:String,val symbol:String,val migrated:Boolean)
 private enum class TokenStage { NEW, BONDING, MIGRATED }
 private enum class AppSection(val title:String, val subtitle:String) {
+    CONSOLE("Konsol", "Dashboard scanner"),
     FILTER("Filter", "New, bonding curve, dan migrasi"),
     POSITIONS("Posisi", "Posisi terbuka dan PnL"),
     STATS("Statistik", "Performa trade dan riwayat"),
-    ADVANCED("Advance", "Pengaturan simulasi dan risiko"),
-    CONSOLE("Konsol", "Dashboard scanner dan log token")
+    ADVANCED("Advance", "Pengaturan simulasi dan risiko")
 }
 
 private data class FilterInput(val key:String,val label:String)
@@ -351,7 +353,7 @@ private fun SpaceXRilisApp(sim:SimulationStore) {
                                     FilterChip(selected=stage==st,onClick={stage=st},label={Text(when(st){TokenStage.NEW->"New";TokenStage.BONDING->"Bonding";TokenStage.MIGRATED->"Migrasi"})})
                                 }
                             }
-                            Card { Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                            Card { Column(Modifier.fillMaxWidth().heightIn(max=520.dp).verticalScroll(rememberScrollState()).padding(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                                 Text("FILTER ${stage.name}",style=MaterialTheme.typography.titleSmall)
                                 Text("Isi nilai secara manual. Kolom kosong berarti tidak membatasi filter.",style=MaterialTheme.typography.bodySmall)
                                 filterInputs(stage).forEach { field ->
